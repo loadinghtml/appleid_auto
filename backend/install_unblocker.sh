@@ -92,8 +92,8 @@ enable_auto_update=$([ "$auto_update" == "y" ] && echo True || echo False)
 if docker ps -a --format '{{.Names}}' | grep -q '^appleauto$'; then
     docker rm -f appleauto
 fi
-docker pull sahuidhsu/appleauto_backend
-docker run -d --name=appleauto --log-opt max-size=1m --log-opt max-file=2 --restart=always --network=host -e API_URL=$api_url -e API_KEY=$api_key -e SYNC_TIME=$sync_time -e AUTO_UPDATE=$enable_auto_update -e LANG=$language -v /var/run/docker.sock:/var/run/docker.sock sahuidhsu/appleauto_backend
+docker pull zhugedali/appleauto_backend
+docker run -d --name=appleauto --log-opt max-size=1m --log-opt max-file=2 --restart=always --network=host -e API_URL=$api_url -e API_KEY=$api_key -e SYNC_TIME=$sync_time -e AUTO_UPDATE=$enable_auto_update -e LANG=$language -v /var/run/docker.sock:/var/run/docker.sock zhugedali/appleauto_backend
 if [ $language = "1" ]; then
   echo "安装完成，容器已启动"
   echo "默认容器名：appleauto"
