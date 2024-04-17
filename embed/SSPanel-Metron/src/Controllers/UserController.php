@@ -61,7 +61,7 @@ class UserController extends BaseController
     // 请查看 https://docs.appleidauto.org/api/sspanel-metron
     // 分享页密码若没有请留空
     private $share_url = "https://test.com/shareapi/kfcv50";
-
+    
     public function index($request, $response, $args)
     {
         $ssr_sub_token = LinkController::GenerateSSRSubCode($this->user->id, 0);
@@ -109,10 +109,10 @@ class UserController extends BaseController
             ->assign('class_left_days', $class_left_days)
             ->assign('paybacks_sum', $paybacks_sum)
             ->assign('ssr_sub_token', $ssr_sub_token)
-            ->assign('display_ios_class', $_ENV['display_ios_class'])
-            ->assign('display_ios_topup', $_ENV['display_ios_topup'])
-            ->assign('ios_account', $ios_accounts[0]['username'])
-            ->assign('ios_password', $ios_accounts[0]['password'])
+            ->assign('display_ios_class', $ios_accounts[0]['username'])
+            ->assign('display_ios_topup', $ios_accounts[0]['password'])
+            ->assign('ios_account', $_ENV['ios_account'])
+            ->assign('ios_password', $_ENV['ios_password'])
             ->assign('ann', $Ann)
             ->assign('geetest_html', $GtSdk)
             ->assign('mergeSub', $_ENV['mergeSub'])
@@ -445,7 +445,7 @@ class UserController extends BaseController
         return $this->view()->assign('anns', $Anns)->display('user/announcement.tpl');
     }
 
-    private function apple()
+private function apple()
     {
         try {
              $stream_opts = [
@@ -696,7 +696,31 @@ class UserController extends BaseController
     public function shop($request, $response, $args)
     {
         $shops = Shop::where('status', 1)->orderBy('name')->get();
-        return $this->view()->assign('shops', $shops)->display('user/shop.tpl');
+        $shop_activity = null;
+        $shop_info = null;
+        foreach ($shops as $shop){
+            if(MetronSetting::get("shop_activity_true") && strtotime(MetronSetting::get("shop_activity_buy_time")) > time()){
+                if ($shop->id == MetronSetting::get('shop_activity_id')){
+                    $shop_activity = $shop;
+                }
+            }
+        }
+        foreach (MetronSetting::get("shop_plan") as  $shop_class_name => $shop_info_time_id){
+            $shop_info[$shop_class_name] = [];
+            foreach ($shop_info_time_id['描述'] as $key => $value){
+                foreach ($shops as $shop) {
+                    if ($shop->id === $value){
+                        $shop_info[$shop_class_name][$key] = $shop;
+                    }
+                }
+            }
+        }
+
+        return $this->view()
+            ->assign('shops', $shops)
+            ->assign('shop_info', $shop_info)
+            ->assign('shop_activity', $shop_activity)
+            ->display('user/shop.tpl');
     }
 
     public function CouponCheck($request, $response, $args)
