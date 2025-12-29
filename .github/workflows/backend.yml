@@ -1,0 +1,48 @@
+name: Manual Build Backend (Multi-Arch)
+
+# 触发条件：手动触发
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. 检出代码
+      # ⚠️ 注意：这里必须指定 ref: backend，因为你的代码在这个分支上
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: backend
+
+      # 2. 设置 QEMU (用于模拟 ARM 环境，构建跨平台镜像的关键)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 3. 设置 Docker Buildx (构建工具)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 4. 登录 Docker Hub (需要去仓库 Settings 设置 Secrets)
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # 5. 构建并推送
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          # ⚠️ 关键修正：指定构建上下文为 backend 子目录
+          context: ./backend
+          # 指定 Dockerfile 的具体位置
+          file: ./backend/Dockerfile
+          # 指定需要构建的架构（同时支持 AMD 和 ARM）
+          platforms: linux/amd64,linux/arm64
+          # 开启推送
+          push: true
+          # 镜像标签 (请确认这里的镜像名是你想要的)
+          tags: |
+            loadinghtml/appleauto_backend:latest
