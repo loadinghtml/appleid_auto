@@ -61,6 +61,8 @@ class UserController extends BaseController
     // 请查看 https://docs.appleidauto.org/api/sspanel-metron
     // 分享页密码若没有请留空
     private $share_url = "https://test.com/shareapi/kfcv50";
+    // 填写Metron站点的完整来源，须与分享API白名单一致；以下为示例。
+    private $share_origin = "https://example.com";
     
     public function index($request, $response, $args)
     {
@@ -445,32 +447,38 @@ class UserController extends BaseController
         return $this->view()->assign('anns', $Anns)->display('user/announcement.tpl');
     }
 
-private function apple()
+    private function apple()
     {
         try {
-             $stream_opts = [
-                "ssl" => [
-                    "verify_peer" => false,
-                    "verify_peer_name" => false,
+            $stream_opts = [
+                'ssl' => [
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
                 ],
-                "http" => [
+                'http' => [
+                    'method' => 'GET',
                     'timeout' => 5,
-                    "header" => [
-                        "Content-Type: application/json",
-                        "Accept: application/json, text/plain, */*"
-                    ]
-                ]
+                    'ignore_errors' => true,
+                    'follow_location' => 0,
+                    'header' => [
+                        'Origin: ' . $this->share_origin,
+                        'Accept: application/json',
+                    ],
+                ],
             ];
             $result = file_get_contents($this->share_url, false, stream_context_create($stream_opts));
-            if ($result === false) {
-                $accounts = [];
-            } else {
-                $accounts = json_decode($result, true)['accounts'];
+            if ($result === false
+                || !isset($http_response_header[0])
+                || !preg_match('/^HTTP\/\S+\s+200(?:\s|$)/', $http_response_header[0])) {
+                return [];
             }
+            $data = json_decode($result, true);
+            return is_array($data) && isset($data['accounts']) && is_array($data['accounts'])
+                ? $data['accounts']
+                : [];
         } catch (Exception $error) {
-            $accounts = [];
+            return [];
         }
-        return $accounts;
     }
 
     public function tutorial($request, $response, $args)
