@@ -67,6 +67,8 @@ CREATE TABLE `share` (
   `html` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `remark` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `expire` datetime DEFAULT NULL,
+  `enable` tinyint(1) NOT NULL DEFAULT '1',
+  `api_allowed_origins` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
   KEY `owner` (`owner`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

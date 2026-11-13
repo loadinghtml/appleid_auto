@@ -4,6 +4,8 @@ declare (strict_types=1);
 namespace app\model;
 
 use think\Model;
+use app\service\ShareOriginPolicy;
+use InvalidArgumentException;
 
 /**
  * @mixin Model
@@ -15,6 +17,14 @@ class SharePage extends Model
 
     public function addSharePage($data): array
     {
+        try {
+            $data['api_allowed_origins'] = ShareOriginPolicy::normalizeWhitelist($data['api_allowed_origins'] ?? '');
+        } catch (InvalidArgumentException $e) {
+            return ['status' => false, 'msg' => $e->getMessage()];
+        }
+        if (!$this->accountsBelongToOwner($data)) {
+            return ['status' => false, 'msg' => '所选账号不存在或不属于分享页所有者'];
+        }
         if ($this->fetchByLink($data['share_link'])) {
             return ['status' => false, 'msg' => '分享链接已存在'];
         }
@@ -33,6 +43,14 @@ class SharePage extends Model
 
     public function updateSharePage($id, $data): array
     {
+        try {
+            $data['api_allowed_origins'] = ShareOriginPolicy::normalizeWhitelist($data['api_allowed_origins'] ?? '');
+        } catch (InvalidArgumentException $e) {
+            return ['status' => false, 'msg' => $e->getMessage()];
+        }
+        if (!$this->accountsBelongToOwner($data)) {
+            return ['status' => false, 'msg' => '所选账号不存在或不属于分享页所有者'];
+        }
         if (!$this) {
             $share = $this->fetch($id);
         } else {
@@ -71,5 +89,29 @@ class SharePage extends Model
         }
         $result = $share->delete();
         return ['status' => $result, 'msg' => $result ? '删除成功' : '删除失败'];
+    }
+
+    private function accountsBelongToOwner(array $data): bool
+    {
+        $list = $data['account_list'] ?? '';
+        if (!is_string($list) || strlen($list) > 512 || !preg_match('/^[1-9][0-9]*(,[1-9][0-9]*)*$/D', $list)) {
+            return false;
+        }
+        $ids = array_unique(explode(',', $list));
+        return (new Account())->whereIn('id', $ids)->where('owner', $data['owner'] ?? 0)->count() === count($ids);
+    }
+
+    public function getAccessError(): string
+    {
+        if (!$this->enable) {
+            return '此分享页已关闭';
+        }
+        if ($this->expire !== null && $this->expire !== '') {
+            $expire = strtotime($this->expire);
+            if ($expire === false || $expire <= time()) {
+                return '此分享链接已过期';
+            }
+        }
+        return '';
     }
 }

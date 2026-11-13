@@ -12,6 +12,7 @@ use app\middleware\Admin;
 use app\middleware\Api;
 use app\middleware\Auth;
 use app\middleware\Share;
+use app\middleware\ShareApi;
 use app\middleware\UserIndex;
 use think\facade\Route;
 
@@ -64,12 +65,12 @@ Route::group('user', function () {
 
 
 // 注册分享页API
-Route::rule('shareapi/:link/[:password]', 'api/getSharepage');
+Route::rule('shareapi/:link/[:password]', 'api/getSharepage')->middleware(ShareApi::class);
 // 注册分享页
 Route::rule('share/', 'share/index')->middleware(Share::class);
 Route::group('share', function () {
     Route::get('/', 'share/index');
-    Route::get('/:link/:id/unlock', 'share/manualUnlock');
+    Route::rule('/:link/:id/unlock', 'share/manualUnlock', 'GET|POST');
     Route::rule('/:link', 'share/index');
 })->middleware(Share::class);
 

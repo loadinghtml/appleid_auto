@@ -174,27 +174,16 @@ class ApiController extends BaseController
 
     public function getSharepage($link, $password = ""): json
     {
-        if (!$link) {
-            return json(['code' => 400, 'msg' => '缺少分享链接', 'status' => false]);
-        }
-        $share_page = new SharePage();
-        $share_page = $share_page->fetchByLink($link);
+        // 来源、启停状态、有效期和密码统一由 ShareApi 中间件校验。
+        $share_page = $this->request->share;
         if (!$share_page) {
-            return json(['code' => 404, 'msg' => '分享页不存在', 'status' => false]);
-        }
-        if ($share_page->password) {
-            if (!$password) {
-                return json(['code' => 400, 'msg' => '缺少密码', 'status' => false]);
-            }
-            if ($password != $share_page->password) {
-                return json(['code' => 403, 'msg' => '密码错误', 'status' => false]);
-            }
+            return json(['code' => 403, 'msg' => '非法请求', 'status' => false], 403, ['Cache-Control' => 'no-store']);
         }
         $accounts = [];
         foreach ($share_page->account_list as $accountID) {
             $account = new Account();
             $account = $account->fetch($accountID);
-            if (!$account) {
+            if (!$account || !$account->enable || $account->owner != $share_page->owner) {
                 continue;
             }
             $accounts[] = [
