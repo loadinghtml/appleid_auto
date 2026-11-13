@@ -29,6 +29,10 @@ class AuthService extends Service
 
     public function userRegister($username, $password): array
     {
+        if (!env('enable_register', false)) {
+            return ['status' => false, 'msg' => '注册功能已关闭'];
+        }
+
         return (new User)->addUser($username, $password);
     }
 
