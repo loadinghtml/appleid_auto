@@ -13,6 +13,7 @@
                     <th>ID</th>
                     <th>备注</th>
                     <th>账号数量</th>
+                    <th>状态</th>
                     <th>过期时间</th>
                     <th>操作</th>
                 </tr>
@@ -33,7 +34,7 @@
                 <tbody>
                 {if $shares->isEmpty()}
                 <tr>
-                    <td class="text-center" colspan="5">暂无数据</td>
+                    <td class="text-center" colspan="6">暂无数据</td>
                 </tr>
                 {/if}
                 {volist name="shares" id="share"}
@@ -41,6 +42,7 @@
                     <td>{$share.id}</td>
                     <td>{$share.remark}</td>
                     <td>{$count=count(explode(',',$share.account_list))}</td>
+                    <td>{if $share.enable}<span class="badge bg-green">已开启</span>{else}<span class="badge bg-secondary">已关闭</span>{/if}</td>
                     <td>{$share.expire==null?"永不过期":$share.expire}</td>
                     <td>
                         <a class="btn btn-secondary" href="/user/share/{$share.id}">编辑</a>

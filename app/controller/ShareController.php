@@ -19,7 +19,7 @@ class ShareController extends BaseController
         $accounts = [];
         foreach ($accountList as $accountID) {
             $account = $this->app->accountService->fetchInShare($accountID);
-            if (!$account) {
+            if (!$account || $account->owner != $share->owner) {
                 continue;
             } else {
                 $account->status = $account->message == "正常" && ((time() - strtotime($account->last_check)) < (($account->check_interval + 2) * 60));
@@ -30,7 +30,7 @@ class ShareController extends BaseController
         if (env("share_random")) {
             shuffle($accounts);
         }
-        return view('share/result', ['accounts' => $accounts, 'html' => $share->html, 'link' => $share->share_link]);
+        return view('share/result', ['accounts' => $accounts, 'html' => $share->html, 'link' => $share->share_link])->header(['Cache-Control' => 'no-store']);
     }
 
     public function manualUnlock(Request $request): string

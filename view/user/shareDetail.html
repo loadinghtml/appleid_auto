@@ -3,6 +3,17 @@
 <div class="card border">
     <h2 class="card-header bg-primary text-white text-center">{$action=="add"?"添加分享页":"编辑分享页"}</h2>
     <form action="" method="post" style="margin: 20px;">
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="enable" id="share_enable" value="1" {if $share->enable}checked{/if}>
+            <label class="form-check-label" for="share_enable">启用分享页</label>
+            <div class="text-muted">关闭后，分享页、分享API和手动解锁均不可访问。可随时重新开启。</div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="api_allowed_origins">分享API域名白名单</label>
+            <textarea class="form-control" id="api_allowed_origins" name="api_allowed_origins" rows="4" maxlength="8192"
+                      placeholder="https://example.com&#10;https://app.example.com:8443">{$share->api_allowed_origins}</textarea>
+            <div class="text-muted">每行填写一个完整来源（协议、域名及可选端口），不含路径，不支持通配符。留空将禁止所有分享API请求；无来源的请求也会被拒绝。此设置不限制普通分享页访问。</div>
+        </div>
         <span class="input-group-text" id="account_list">请选择账号</span>
         <div class="form-check mb-3">
             {foreach $accounts as $id => $username}

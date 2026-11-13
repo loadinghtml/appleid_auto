@@ -153,13 +153,15 @@ class adminController extends BaseController
     {
         try {
             $account_list = $this->request->param('account_list');
-            if (!$account_list) {
+            if (!is_array($account_list) || !$account_list || count(array_filter($account_list, 'is_scalar')) !== count($account_list)) {
                 return alert("error", "请至少选择一个账号", "2000", "/user/share" . $id == 0 ? "" : "/$id");
             }
             $accounts = implode(',', $account_list);
             $data = [
                 'share_link' => $this->request->param('share_link'),
                 'account_list' => $accounts,
+                'enable' => $this->request->param('enable') === '1',
+                'api_allowed_origins' => $this->request->param('api_allowed_origins', ''),
                 'password' => $this->request->param('password') == "" ? null : $this->request->param('password'),
                 'owner' => $this->request->param('owner'),
                 'html' => $this->request->param('html'),
