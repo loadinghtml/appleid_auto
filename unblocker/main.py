@@ -18,6 +18,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
+from proxy_bridge import LocalSocks5Bridge, get_bridge_advertise_host, parse_socks5_proxy
+
 urllib3.disable_warnings()
 
 VERSION = "v2.0-20251229"
@@ -178,24 +180,54 @@ class Config:
         self.fail_retry = config_result["fail_retry"]
         self.enable = config_result["enable"]
         self.proxy = ""
+        self.browser_proxy = ""
+        self.requests_proxy = ""
+        self.proxy_bridge = None
         if not debug and self.proxy_content != "" and self.proxy_type != "":
             # 新版本代理
             if "url" in self.proxy_type:
                 try:
                     self.proxy_type = self.proxy_type.split("+")[0]
-                    self.proxy_content = get(self.proxy_content).text
-                    self.proxy = self.proxy = self.proxy_type + "://" + self.proxy_content
+                    self.proxy_content = get(self.proxy_content).text.strip()
                 except BaseException as e:
                     logger.error(lang_text.failOnRetrievingProxyFromAPI)
                     logger.error(e)
-                    self.proxy = ""
+                    self.proxy_content = ""
                 else:
-                    logger.info(f"{lang_text.retrievedProxyFromAPI}: {self.proxy}")
-            elif self.proxy_type == "socks5" or self.proxy_type == "http":
-                self.proxy = self.proxy_type + "://" + self.proxy_content
-            else:
-                logger.error(lang_text.invalidProxyType)
-                self.proxy = ""
+                    logger.info(f"{lang_text.retrievedProxyFromAPI}: {self.proxy_type}://{self.proxy_content}")
+            if self.proxy_content != "":
+                if self.proxy_type in ("socks5", "socks5h"):
+                    try:
+                        socks_host, socks_port, socks_user, socks_pass = parse_socks5_proxy(self.proxy_content)
+                        if socks_user or socks_pass:
+                            bind_host = "127.0.0.1" if self.webdriver == "local" else "0.0.0.0"
+                            self.proxy_bridge = LocalSocks5Bridge(
+                                socks_host,
+                                socks_port,
+                                socks_user,
+                                socks_pass,
+                                bind_host=bind_host,
+                            )
+                            self.proxy_bridge.start()
+                            advertise_host = get_bridge_advertise_host(self.webdriver)
+                            self.browser_proxy = f"http://{advertise_host}:{self.proxy_bridge.port}"
+                            self.requests_proxy = f"http://127.0.0.1:{self.proxy_bridge.port}"
+                            self.proxy = f"socks5://{socks_host}:{socks_port}"
+                        else:
+                            self.proxy = f"{self.proxy_type}://{socks_host}:{socks_port}"
+                            self.browser_proxy = self.proxy
+                            self.requests_proxy = self.proxy
+                    except BaseException as e:
+                        logger.error(lang_text.invalidProxyType)
+                        logger.error(e)
+                        self.proxy = ""
+                elif self.proxy_type == "http":
+                    self.proxy = self.proxy_type + "://" + self.proxy_content.strip()
+                    self.browser_proxy = self.proxy
+                    self.requests_proxy = self.proxy
+                else:
+                    logger.error(lang_text.invalidProxyType)
+                    self.proxy = ""
         if self.headless:
             logger.info(lang_text.backgroundRunning)
         if self.enable_delete_devices:
@@ -745,10 +777,11 @@ class ID:
 
 
 def notification(content):
+    proxy_url = config.requests_proxy or config.proxy
     proxies = {
-        'http': config.proxy,
-        'https': config.proxy,
-    } if config.proxy else None
+        'http': proxy_url,
+        'https': proxy_url,
+    } if proxy_url else None
 
     content = f"【{config.username}】{content}"
 
@@ -792,8 +825,8 @@ def setup_driver():
     options.add_experimental_option("useAutomationExtension", False)
     if config.headless:
         options.add_argument("--headless")
-    if config.proxy != "":
-        options.add_argument(f"--proxy-server={config.proxy}")
+    if config.browser_proxy != "":
+        options.add_argument(f"--proxy-server={config.browser_proxy}")
     user_agents = [
         # Windows Chrome
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
@@ -978,6 +1011,8 @@ def job():
         driver.quit()
     except BaseException:
         logger.error(lang_text.WDCloseError)
+    if getattr(config, "proxy_bridge", None) is not None:
+        config.proxy_bridge.stop()
     if config.fail_retry:
         # 如果任务执行失败，5分钟后再次执行
         next_time = config.check_interval if job_success else 5
