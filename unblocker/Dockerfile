@@ -2,6 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 ADD main.py /app
+ADD proxy_bridge.py /app
 ADD requirements.txt /app
 ADD lang.py /app
 
